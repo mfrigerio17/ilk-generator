@@ -1,0 +1,27 @@
+robot: ur5
+
+solvers:
+
+- name: myFK
+  kind: sweeping
+  outputs:
+    poses:
+      - target: wrist_3
+        reference: base
+    jacs:
+      - target: wrist_3
+        reference: base
+    velocities:
+      - target: wrist_1
+        reference: shoulder
+        kind: 6D
+        cframe: _unused_
+
+- name: myIK
+  kind: IK
+  level: position
+  cfgSpace: pose
+  frames:
+    target:    wrist_3
+    reference: base
+
