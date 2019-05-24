@@ -208,12 +208,16 @@ class ILKGenerator():
                     somethingBefore = currentNonEmpty
                 yield sep
 
+        realJointsCount = len(self.solverModel.robot.joints)
+        for j in self.solverModel.robot.joints.values() :
+            if j.kind == "fixed" :
+                realJointsCount -= 1
         template = '''
 return {
     solverid = '${solver.name}',
     solver_type = 'forward',
     robot_name = '${solver.robot.name}',
-    joint_space_size = ${len(solver.robot.joints)},
+    joint_space_size = ${realJointsCount},
     poses = {
         constant = {
         % for pose in const_poses :
@@ -273,6 +277,7 @@ ${gjac}
         context = {
             'this' : self,
             'solver': self.solverModel,
+            'realJointsCount' : realJointsCount,
 
             'const_poses'  : self.commaSepLines(self.solverModel.constPoses, ILKGenerator.constPosesBlock),
             'joint_poses'  : self.commaSepLines(self.solverModel.jointPoses, ILKGenerator.jointPosesBlock),
