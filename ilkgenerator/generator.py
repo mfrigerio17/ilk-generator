@@ -112,7 +112,12 @@ class ILKGenerator():
         self.velComposes = solvermodel.velBinaryComposes
         self.poseComposes = poseComposes
         self.solverModel  = solvermodel
-        ILKGenerator.jointPosesBlock.context['jnum'] = solvermodel.robot.jointNum
+
+        # The joint coordinate for 0-based sequences should be the joint code
+        # in the robot model -1. This is because the regular numbering for joints
+        # start with 1, which is the joint connecting the base (#0) with the
+        # link #1.
+        ILKGenerator.jointPosesBlock.context['jnum'] = lambda joint : solvermodel.robot.jointNum(joint)-1
 
         def outputIndex(self):
             total = sum( [len(block) for block in self.solverModel.output.values() ] )
