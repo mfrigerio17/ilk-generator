@@ -211,7 +211,7 @@ class QueryParser():
         Returns a list of solvermodel.SolverSpecs instances.
         '''
         if query.robotname != self.robot.name :
-            raise ValueError("Mismatching robot name between the query and the robot model")
+            raise ValueError("Mismatching robot names: '{0}' (query) and '{1}' (robot model)".format(query.robotname, self.robot.name))
 
         sweepingsolvers = []
         for s in query.sweepingSolvers :
