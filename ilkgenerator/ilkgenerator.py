@@ -113,7 +113,7 @@ def main():
 
     for sspecs in sweepingsolvers :
         solver = solvermodel.FKSolverModel(sspecs)
-        gen = generator.ILKGenerator(solver)
+        gen = generator.SweepingSolverGenerator(solver)
         lua = gen.lua()
         ostream = open(args.odir + "/" + solver.name + ".ilk", mode='w')
         ostream.write(lua)

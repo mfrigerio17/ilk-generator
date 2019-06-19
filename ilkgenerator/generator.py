@@ -8,6 +8,7 @@ from mako.template import Template
 from collections import namedtuple
 
 from ilkgenerator import query
+from ilkgenerator import codegenutils
 
 from gr import core as gr
 from robmodel import frames
@@ -21,24 +22,6 @@ def velocityIdentifier(velocity):
 def gJacobianIdentifier(gjac):
     return "J_" + gjac.velocity.target.name + "_" + gjac.velocity.reference.name
 
-def commaSeparatedLines(sequence, lineTemplate, itemName, context):
-    lineTPL = Template(lineTemplate)
-    count = 0
-    suffix = ","
-
-    for item in sequence :
-        context[itemName] = item
-        context['loopi']  = count
-        if count == len(sequence)-1 : suffix = ""
-        yield lineTPL.render(**context) + suffix
-        count = count + 1
-
-def multiLineBlock(iterable, indent=""):
-    tpl = Template('''
-% for item in iterable :
-${space}${item}
-% endfor''')
-    return tpl.render( iterable=iterable, space=indent )
 
 def jointTypeStr(joint) :
     return joint.kind # by chance, the same string we use in the ILK
@@ -54,147 +37,181 @@ def directionTag(jointPose) :
 
 
 
-class ILKGenerator():
-    BlockSpec = namedtuple('BlockSpec', ['lineTemplate', 'singleItemName', 'context'])
+BlockSpec = namedtuple('BlockSpec', ['lineTemplate', 'singleItemName', 'context'])
 
-    poseComposeBlock = BlockSpec(
-        lineTemplate = '''{ op='pose-compose', arg1='${toID(c.arg1)}', arg2='${toID(c.arg2)}', res='${toID(c.result)}' }''',
-        singleItemName = "c",
-        context = {'toID' : poseIdentifier}
-    )
-    velComposeBlock = BlockSpec(
-        lineTemplate = '''{ op='vel-compose', arg1='${toID(c.arg1)}', arg2='${toID(c.arg2)}', pose='${poseID(c.pose)}', res='${toID(c.result)}' }''',
-        singleItemName = "c",
-        context = {'toID' : velocityIdentifier, 'poseID' : poseIdentifier}
-    )
-    explicitJointVelocitiesBlock = BlockSpec(
-        lineTemplate = '''{ op='vel-joint', arg='${toID(jv)}' }''',
-        singleItemName = "jv",
-        context = {'toID' : velocityIdentifier}
-    )
-
-    constPosesBlock = BlockSpec(
-        lineTemplate = '''${toID(pose)}={}''',
-        singleItemName = "pose",
-        context = {'toID' : poseIdentifier}
-    )
-    jointPosesBlock = BlockSpec(
-        lineTemplate = '''${toID(pose)} = { jtype='${jtype(pose.joint)}', dir='${dirTag(pose)}', input=${jnum(pose.joint)} }''',
-        singleItemName = "pose",
-        context = {'toID'  : poseIdentifier,
-                   'dirTag': directionTag,
-                   'jtype' : jointTypeStr}
-    )
-
-    outputPosesBlock = BlockSpec(
-        lineTemplate = '''${toID(pose)} = {otype='pose', usersort=${next(oindex)} }''',
-        singleItemName = "pose",
-        context = {'toID' : poseIdentifier}
-    )
-    outputVelocitiesBlock = BlockSpec(
-        lineTemplate = '''${toID(vel)} = {otype='velocity', usersort=${next(oindex)} }''',
-        singleItemName = "vel",
-        context = {'toID' : velocityIdentifier}
-    )
-    outputJacobiansBlock = BlockSpec(
-        lineTemplate = "${toID(gjac)} = {otype='jacobian', usersort=${next(oindex)} }",
-        singleItemName = "gjac",
-        context = {'toID' : gJacobianIdentifier}
-    )
-
-
+class SweepingSolverGenerator():
     def __init__(self, solvermodel):
         poseComposes = []
         for composition in solvermodel.poseComposes :
             poseComposes.extend( composition.asSequenceOfBinaryCompositions() )
 
         self.explicitJointVelocities = solvermodel.jointVelocitiesExplicit
-        self.velComposes = solvermodel.velBinaryComposes
+        self.velComposes  = solvermodel.velBinaryComposes
         self.poseComposes = poseComposes
         self.solverModel  = solvermodel
-
-        # The joint coordinate for 0-based sequences should be the joint code
-        # in the robot model -1. This is because the regular numbering for joints
-        # start with 1, which is the joint connecting the base (#0) with the
-        # link #1.
-        ILKGenerator.jointPosesBlock.context['jnum'] = lambda joint : solvermodel.robot.jointNum(joint)-1
 
         def outputIndex(self):
             total = sum( [len(block) for block in self.solverModel.output.values() ] )
             for i in range(0,total) :
                 yield i+1
-        outputVarIndexGenerator = outputIndex(self)
-        ILKGenerator.outputPosesBlock.context['oindex'] = outputVarIndexGenerator
-        ILKGenerator.outputVelocitiesBlock.context['oindex'] = outputVarIndexGenerator
-        ILKGenerator.outputJacobiansBlock.context['oindex'] = outputVarIndexGenerator
+        self.outputVarIndexGenerator = outputIndex(self)
 
-        self.jointVelocitiesBlock = ILKGenerator.BlockSpec(
+
+    def jointNum(self, joint):
+        '''The integer coordinate for the given joint.
+        The joint coordinate for 0-based sequences should be the joint code
+        in the robot model -1. This is because the regular numbering for joints
+        start with 1, which is the joint connecting the base (#0) with the
+        link #1.'''
+        return self.solverModel.robot.jointNum(joint)-1
+
+    def commaSepLines(self, sequence, genSpec):
+        generator = codegenutils.singleItemTemplateRenderer(genSpec.lineTemplate, genSpec.singleItemName, genSpec.context)
+        return codegenutils.commaSeparated(sequence, generator)
+
+    def block_modelJoints(self):
+        bspec = BlockSpec(
+            lineTemplate   = '''${joint.name} = { kind='${typeStr(joint)}', coordinate=${jnum(joint)} }''',
+            singleItemName = 'joint',
+            context = {'typeStr': jointTypeStr, 'jnum': self.jointNum}
+        )
+        return self.commaSepLines(self.solverModel.robot.joints.values(), bspec)
+
+
+    def block_constantPoses(self):
+        bspec = BlockSpec(
+            lineTemplate = '''${toID(pose)}={}''',
+            singleItemName = 'pose',
+            context = {'toID' : poseIdentifier}
+        )
+        return self.commaSepLines(self.solverModel.constPoses, bspec)
+
+
+    def block_jointPoses(self):
+        bspec = BlockSpec(
+            lineTemplate = '''${toID(pose)} = { joint='${pose.joint.name}', dir='${dirTag(pose)}' }''',
+            singleItemName = 'pose',
+            context = {'toID': poseIdentifier, 'dirTag': directionTag}
+        )
+        return self.commaSepLines(self.solverModel.jointPoses, bspec)
+
+
+    def block_jointVelocityTwists(self):
+        def singleLine(jvel):
+            tpl = ""
+            poseid = ""
+            if jvel.polarity == -1 :
+                refF = self.solverModel.robotFrames.framesByName[jvel.vel.target.name]
+                tgtF = self.solverModel.robotFrames.framesByName[jvel.joint.name]
+                pose = gr.Pose(target=tgtF, reference=refF)
+                poseid = poseIdentifier(pose)
+                tpl = "${velid} = { joint='${joint.name}', polarity=-1, ctransform='${pose}' }"
+            else :
+                tpl = "${velid} = { joint='${joint.name}', polarity=1 }"
+
+            context = {'velid' : velocityIdentifier(jvel.vel),
+                       'joint' : jvel.joint,
+                       'jnum'  : self.solverModel.robot.jointNum(jvel.joint),
+                       'pose'  : poseid }
+            return Template(tpl).render(**context)
+
+        bspec = BlockSpec(
             lineTemplate = "${line(jvel)}",
             singleItemName = "jvel",
-            context = {'line' : self.jointVelocityLine}
+            context = {'line' : singleLine}
         )
-        self.jacobiansBlock = ILKGenerator.BlockSpec(
-            lineTemplate = "${line(J)}",
+        return self.commaSepLines(self.solverModel.jointVelocities.values(), bspec)
+
+
+    def block_jacobians(self):
+        def oneJac(J):
+            Jid = gJacobianIdentifier(J)
+
+            column_op = BlockSpec(
+                lineTemplate = '''{ op='GJac-col', joint='${J.joints[j].name}', jac='${gjac_id}', col=${jnum(J.joints[j])}, joint_pose='${poseID(J.jointPoses[j])}', polarity=${J.polarities[j]} }''',
+                singleItemName = "j",
+                context = { "gjac_id" : Jid,
+                            "jnum"    : self.solverModel.rmodels['robot'].jointNum,
+                            "poseID"  : poseIdentifier,
+                            "J"       : J
+                        }
+            )
+
+            templateText = '''
+    { op='geom-jacobian', name='${gjac_id}', pose='${ee_pose}' },
+% for col_op in columnOps :
+    ${col_op}
+% endfor'''
+            context = {
+                "gjac_id"   : Jid,
+                "ee_pose"   : poseIdentifier(J.targetPose),
+                "columnOps" : self.commaSepLines(range(0,len(J.joints)), column_op )
+            }
+            return Template(templateText).render(**context)
+
+        bspec = BlockSpec(
+            lineTemplate = "${block(J)}",
             singleItemName = "J",
-            context = {'line' : self.jacobianBlock}
+            context = {'block' : oneJac}
         )
-
-    def commaSepLines(self, sequence, spec):
-        return commaSeparatedLines(sequence, spec.lineTemplate, spec.singleItemName, spec.context)
+        return self.commaSepLines(self.solverModel.geometricJacobians, bspec)
 
 
-    def jacobianBlock(self, J):
-        Jid = gJacobianIdentifier(J)
-
-        column_op = ILKGenerator.BlockSpec(
-            lineTemplate = '''{ op='GJac-col', jtype='${jtype(joints[j])}', jac='${gjac_id}', col=${jnum(joints[j])}, joint_pose='${poseID(jposes[j])}', polarity=${polarities[j]} }''',
-            singleItemName = "j",
-            context = { "jtype"   : jointTypeStr,
-                        "gjac_id" : Jid,
-                        "jnum"    : self.solverModel.rmodels['robot'].jointNum,
-                        "poseID"  : poseIdentifier,
-                        "joints"  : J.joints,
-                        "jposes"  : J.jointPoses,
-                        "polarities" : J.polarities
-                    }
+    def block_poseComposes(self):
+        bspec = BlockSpec(
+            lineTemplate = '''{ op='pose-compose', arg1='${toID(c.arg1)}', arg2='${toID(c.arg2)}', res='${toID(c.result)}' }''',
+            singleItemName = "c",
+            context = {'toID' : poseIdentifier}
         )
-
-        templateText = '''
-        { op='geom-jacobian', name='${gjac_id}', pose='${ee_pose}' },
-    % for col_op in columnOps :
-        ${col_op}
-    % endfor'''
-        context = {
-            "gjac_id"   : Jid,
-            "ee_pose"   : poseIdentifier(J.targetPose),
-            "columnOps" : self.commaSepLines(range(0,len(J.joints)), column_op )
-        }
-        return Template(templateText).render(**context)
+        return self.commaSepLines(self.poseComposes, bspec)
 
 
-    def jointVelocityLine(self, jvel):
-        tpl = ""
-        poseid = ""
-        if jvel.polarity == -1 :
-            refF = self.solverModel.robotFrames.framesByName[jvel.vel.target.name]
-            tgtF = self.solverModel.robotFrames.framesByName[jvel.joint.name]
-            pose = gr.Pose(target=tgtF, reference=refF)
-            poseid = poseIdentifier(pose)
-            tpl = "${velid} = { jtype='${jtype}', index=${jnum}, polarity=-1, ctransform='${pose}' }"
-        else :
-            tpl = "${velid} = { jtype='${jtype}', index=${jnum}, polarity=1 }"
-
-        context = {'velid' : velocityIdentifier(jvel.vel),
-                   'jtype' : jointTypeStr(jvel.joint),
-                   'jnum'  : self.solverModel.robot.jointNum(jvel.joint),
-                   'pose'  : poseid }
-        return Template(tpl).render(**context)
+    def block_velocityCompose(self):
+        bspec = BlockSpec(
+            lineTemplate = '''{ op='vel-compose', arg1='${toID(c.arg1)}', arg2='${toID(c.arg2)}', pose='${poseID(c.pose)}', res='${toID(c.result)}' }''',
+            singleItemName = 'c',
+            context = {'toID' : velocityIdentifier, 'poseID' : poseIdentifier}
+        )
+        return self.commaSepLines(self.velComposes, bspec)
 
 
+    def block_explicitJointVelTwists(self):
+        bspec = BlockSpec(
+            lineTemplate = '''{ op='joint-vel-twist', arg='${toID(jv)}' }''',
+            singleItemName = 'jv',
+            context = {'toID' : velocityIdentifier}
+            )
+        return self.commaSepLines(self.explicitJointVelocities, bspec)
+
+
+    def block_outputPoses(self):
+        bspec = BlockSpec(
+            lineTemplate = '''${toID(pose)} = {otype='pose', usersort=${next(oindex)} }''',
+            singleItemName = 'pose',
+            context = {'toID': poseIdentifier, 'oindex': self.outputVarIndexGenerator}
+            )
+        return self.commaSepLines(self.solverModel.output['pose'], bspec)
+
+
+    def block_outputVelocities(self):
+        bspec = BlockSpec(
+            lineTemplate = '''${toID(vel)} = {otype='velocity', usersort=${next(oindex)} }''',
+            singleItemName = 'vel',
+            context = {'toID' : velocityIdentifier, 'oindex': self.outputVarIndexGenerator}
+        )
+        return self.commaSepLines(self.solverModel.output['velocity'], bspec)
+
+
+    def block_outputJacobians(self):
+        bspec = BlockSpec(
+            lineTemplate = "${toID(gjac)} = {otype='jacobian', usersort=${next(oindex)} }",
+            singleItemName = 'gjac',
+            context = {'toID' : gJacobianIdentifier, 'oindex': self.outputVarIndexGenerator}
+        )
+        return self.commaSepLines(self.solverModel.output['jacobian'], bspec)
 
 
     def lua(self):
-
         ops_blocks = [ self.poseComposes, self.explicitJointVelocities, self.velComposes, self.solverModel.geometricJacobians]
         out_blocks = [ self.solverModel.output['pose'],
                        self.solverModel.output['velocity'],
@@ -223,56 +240,61 @@ return {
     solver_type = 'forward',
     robot_name = '${solver.robot.name}',
     joint_space_size = ${realJointsCount},
+    joints = {
+    % for jointspec in this.block_modelJoints() :
+        ${jointspec}
+    % endfor
+    },
     poses = {
         constant = {
-        % for pose in const_poses :
+        % for pose in this.block_constantPoses() :
             ${pose}
         % endfor
         },
         joint = {
-        % for pose in joint_poses :
+        % for pose in this.block_jointPoses() :
             ${pose}
         % endfor
         }
     },
-    joint_velocities = {
-        % for jvel in joint_velocities :
+    joint_vel_twists = {
+        % for jvel in this.block_jointVelocityTwists() :
         ${jvel}
         % endfor
     },
     ops = {
-    % for composition in pose_composes :
+    % for composition in this.block_poseComposes() :
         ${composition}
     % endfor
     ${ next(ops_separator) }
 
-    % for jointVel in explicit_joint_velocities :
+    % for jointVel in this.block_explicitJointVelTwists() :
         ${jointVel}
     % endfor
     ${ next(ops_separator) }
 
-    % for velcompose in vel_composes :
+    % for velcompose in this.block_velocityCompose() :
         ${velcompose}
     % endfor
     ${ next(ops_separator) }
 
-    % for gjac in jacobians :
+    % for gjac in this.block_jacobians() :
 ${gjac}
     % endfor
     },
 
     outputs = {
-    % for p in out_poses :
+    % for p in this.block_outputPoses() :
         ${p}
     % endfor
     ${ next(out_separator) }
 
-    % for v in out_velocities :
+    % for v in this.block_outputVelocities() :
         ${v}
     % endfor
     ${ next(out_separator) }
 
-    % for J in out_jacobians :
+    % for J in this.block_outputJacobians() :
         ${J}
     % endfor
     }
@@ -283,19 +305,6 @@ ${gjac}
             'this' : self,
             'solver': self.solverModel,
             'realJointsCount' : realJointsCount,
-
-            'const_poses'  : self.commaSepLines(self.solverModel.constPoses, ILKGenerator.constPosesBlock),
-            'joint_poses'  : self.commaSepLines(self.solverModel.jointPoses, ILKGenerator.jointPosesBlock),
-            'joint_velocities' : self.commaSepLines(self.solverModel.jointVelocities.values(), self.jointVelocitiesBlock),
-
-            'pose_composes': self.commaSepLines(self.poseComposes, ILKGenerator.poseComposeBlock),
-            'explicit_joint_velocities' : self.commaSepLines(self.explicitJointVelocities, ILKGenerator.explicitJointVelocitiesBlock),
-            'vel_composes' : self.commaSepLines(self.velComposes, ILKGenerator.velComposeBlock),
-            'jacobians' : self.commaSepLines(self.solverModel.geometricJacobians, self.jacobiansBlock),
-
-            'out_poses'    : self.commaSepLines(self.solverModel.output['pose'], ILKGenerator.outputPosesBlock),
-            'out_velocities': self.commaSepLines(self.solverModel.output['velocity'], ILKGenerator.outputVelocitiesBlock),
-            'out_jacobians': self.commaSepLines(self.solverModel.output['jacobian'], ILKGenerator.outputJacobiansBlock),
             'ops_separator' : separator( ops_blocks ),
             'out_separator' : separator( out_blocks )
         }

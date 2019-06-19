@@ -1,13 +1,31 @@
 import math
 import numpy as np
+from mako.template import Template
 
-def commaSeparated(sequence, blockGenerator):
+
+
+def singleItemTemplateRenderer(templateCode, itemNameInTemplate, context):
+    '''Given a template with one parameter, returns a function that instantiates
+    it (i.e. returns text) with the given item'''
+    tpl = Template(templateCode)
+
+    def generator(item):
+        context[itemNameInTemplate] = item
+        return tpl.render(**context)
+
+    return generator
+
+
+def commaSeparated(sequence, renderer):
+    '''Given an iterable sequence and a template renderer, returns a Python
+    generator yielding the rendering of the template for each item of the
+    sequence, plus a comma after every generated block but the last.'''
     count = 0
     suffix = ","
 
     for item in sequence :
         if count == len(sequence)-1 : suffix = ""
-        yield blockGenerator(item) + suffix
+        yield renderer(item) + suffix
         count = count + 1
 
 
