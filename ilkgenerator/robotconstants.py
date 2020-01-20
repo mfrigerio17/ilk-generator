@@ -42,9 +42,11 @@ def asLuaTable(robotGeometryModel):
 
     templateText = '''
 return {
+  poses = {
     % for mx in matrices :
         ${mx}
     % endfor
+  }
 }
 '''
     template = Template(templateText)
