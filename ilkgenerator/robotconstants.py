@@ -38,7 +38,7 @@ ${name_inv} = {
 
 def asLuaTable(robotGeometryModel):
     posesModel      = robotGeometryModel.posesModel
-    transformsmodel = ct.frommotions.motionsToCoordinateTransforms(posesModel, PrimitiveCTransform.Convention.movedFrameOnTheRight )
+    transformsmodel = ct.frommotions.motionsToCoordinateTransforms(posesModel, ct.models.TransformPolarity.movedFrameOnTheRight )
 
     templateText = '''
 return {
