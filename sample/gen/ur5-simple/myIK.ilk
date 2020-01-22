@@ -1,0 +1,11 @@
+
+return {
+        solverid = 'myIK',
+        solver_type = 'inverse',
+        robot_name = 'ur5',
+        kind='pos',
+        vectors='pose',
+        target='wrist_3',
+        reference='base',
+        fk='fk__myIK'
+}

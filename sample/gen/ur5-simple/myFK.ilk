@@ -1,0 +1,85 @@
+
+return {
+    solverid = 'myFK',
+    solver_type = 'forward',
+    robot_name = 'ur5',
+    joint_space_size = 6,
+    joints = {
+        shoulder_pan = { kind='revolute', coordinate=0 },
+        shoulder_lift = { kind='revolute', coordinate=1 },
+        elbow = { kind='revolute', coordinate=2 },
+        wr1 = { kind='revolute', coordinate=3 },
+        wr2 = { kind='revolute', coordinate=4 },
+        wr3 = { kind='revolute', coordinate=5 }
+    },
+    poses = {
+        constant = {
+            wr3__wrist_2={},
+            shoulder_lift__shoulder={},
+            wr1__forearm={},
+            forearm__wr1={},
+            elbow__upperarm={},
+            shoulder_pan__base={},
+            upperarm__elbow={},
+            wr2__wrist_1={}
+        },
+        joint = {
+            wrist_1__wr1 = { joint='wr1', dir='a_x_b' },
+            wr1__wrist_1 = { joint='wr1', dir='b_x_a' },
+            upperarm__shoulder_lift = { joint='shoulder_lift', dir='a_x_b' },
+            forearm__elbow = { joint='elbow', dir='a_x_b' },
+            shoulder__shoulder_pan = { joint='shoulder_pan', dir='a_x_b' },
+            elbow__forearm = { joint='elbow', dir='b_x_a' },
+            wrist_3__wr3 = { joint='wr3', dir='a_x_b' },
+            wrist_2__wr2 = { joint='wr2', dir='a_x_b' }
+        }
+    },
+    joint_vel_twists = {
+        v__wrist_1__forearm = { joint='wr1', polarity=1 },
+        v__upperarm__shoulder = { joint='shoulder_lift', polarity=1 },
+        v__forearm__upperarm = { joint='elbow', polarity=1 }
+    },
+    ops = {
+        { op='pose-compose', arg1='shoulder_lift__shoulder', arg2='shoulder__shoulder_pan', res='shoulder_lift__shoulder_pan' },
+        { op='pose-compose', arg1='shoulder_lift__shoulder_pan', arg2='shoulder_pan__base', res='shoulder_lift__base' },
+        { op='pose-compose', arg1='elbow__upperarm', arg2='upperarm__shoulder_lift', res='elbow__shoulder_lift' },
+        { op='pose-compose', arg1='elbow__shoulder_lift', arg2='shoulder_lift__base', res='elbow__base' },
+        { op='pose-compose', arg1='wr1__forearm', arg2='forearm__elbow', res='wr1__elbow' },
+        { op='pose-compose', arg1='wr1__elbow', arg2='elbow__base', res='wr1__base' },
+        { op='pose-compose', arg1='wr2__wrist_1', arg2='wrist_1__wr1', res='wr2__wr1' },
+        { op='pose-compose', arg1='wr2__wr1', arg2='wr1__base', res='wr2__base' },
+        { op='pose-compose', arg1='wr3__wrist_2', arg2='wrist_2__wr2', res='wr3__wr2' },
+        { op='pose-compose', arg1='wr3__wr2', arg2='wr2__base', res='wr3__base' },
+        { op='pose-compose', arg1='forearm__wr1', arg2='wr1__wrist_1', res='forearm__wrist_1' },
+        { op='pose-compose', arg1='upperarm__elbow', arg2='elbow__forearm', res='upperarm__forearm' },
+        { op='pose-compose', arg1='wrist_3__wr3', arg2='wr3__base', res='wrist_3__base' }
+    ,
+
+        { op='joint-vel-twist', arg='v__upperarm__shoulder' }
+    ,
+
+        { op='vel-compose', arg1='v__forearm__upperarm', arg2='v__upperarm__shoulder', pose='upperarm__forearm', res='v__forearm__shoulder' },
+        { op='vel-compose', arg1='v__wrist_1__forearm', arg2='v__forearm__shoulder', pose='forearm__wrist_1', res='v__wrist_1__shoulder' }
+    ,
+
+
+    { op='geom-jacobian', name='J_wrist_3_base', pose='wrist_3__base' },
+    { op='GJac-col', joint='shoulder_pan', jac='J_wrist_3_base', col=1, joint_pose='shoulder_pan__base', polarity=1 },
+    { op='GJac-col', joint='shoulder_lift', jac='J_wrist_3_base', col=2, joint_pose='shoulder_lift__base', polarity=1 },
+    { op='GJac-col', joint='elbow', jac='J_wrist_3_base', col=3, joint_pose='elbow__base', polarity=1 },
+    { op='GJac-col', joint='wr1', jac='J_wrist_3_base', col=4, joint_pose='wr1__base', polarity=1 },
+    { op='GJac-col', joint='wr2', jac='J_wrist_3_base', col=5, joint_pose='wr2__base', polarity=1 },
+    { op='GJac-col', joint='wr3', jac='J_wrist_3_base', col=6, joint_pose='wr3__base', polarity=1 }
+
+    },
+
+    outputs = {
+        wrist_3__base = {otype='pose', usersort=1 }
+    ,
+
+        v__wrist_1__shoulder = {otype='velocity', usersort=2 }
+    ,
+
+        J_wrist_3_base = {otype='jacobian', usersort=3 }
+    }
+}
