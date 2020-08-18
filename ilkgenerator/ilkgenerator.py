@@ -1,17 +1,17 @@
 import logging, os, argparse, yaml
 
-import robmodel.convert.importers.urdf   as urdfImporter
+import robmodel.convert.urdf.imp as urdfImporter
 
 kindslSupport = True
 try:
-    import robmodel.convert.importers.kindsl as kindslImporter
+    import robmodel.convert.kindsl.imp as kindslImporter
 except ImportError as e:
     kindslImportErrorMsg = e.msg
     kindslSupport = False
 
 import robmodel
 
-from gr import motions
+from kgprim import motions
 
 from ilkgenerator import query, solvermodel, generator, robotconstants
 

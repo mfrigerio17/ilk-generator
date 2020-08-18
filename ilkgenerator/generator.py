@@ -10,7 +10,7 @@ from collections import namedtuple
 from ilkgenerator import query
 from ilkgenerator import codegenutils
 
-from gr import core as gr
+from kgprim import core as gr
 from robmodel import frames
 
 def poseIdentifier(pose):

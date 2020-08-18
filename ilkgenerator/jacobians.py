@@ -1,5 +1,4 @@
-import gr
-from gr.core import Pose
+from kgprim.core import Pose
 
 class GeometricJacobian():
     '''

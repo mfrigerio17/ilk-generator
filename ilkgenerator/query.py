@@ -9,7 +9,7 @@ import yaml
 import logging
 
 from ilkgenerator import solvermodel
-from gr import core as gr
+from kgprim import core as gr
 
 log = logging.getLogger(__name__)
 
@@ -32,7 +32,7 @@ def queryFromDictionary(data):
 
 
 def queryFromYAML(istream):
-    data = yaml.load(istream)
+    data = yaml.safe_load(istream)
     return queryFromDictionary(data)
 
 

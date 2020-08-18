@@ -3,15 +3,16 @@ from mako.template import Template
 
 from ilkgenerator import codegenutils as tplutils
 
-import ct.frommotions
-import ct.numericbackend
-from ct.models import PrimitiveCTransform
+import kgprim.ct.frommotions as mot2ct
+import kgprim.ct.repr.mxrepr as mxrepr
+from kgprim.ct.models import PrimitiveCTransform
+from kgprim.ct.models import TransformPolarity
 
 
 formatter = tplutils.FloatsFormatter(round_digits=6)
 
 def oneTransformTable(ctransform):
-    hm = ct.numericbackend.homogeneousCoordinates(ctransform)
+    hm = mxrepr.hCoordinatesNumeric(ctransform)
 
     name = ctransform.rightFrame.name + "__" + ctransform.leftFrame.name
     p = tplutils.numericArrayToText( hm[0:3,3], formatter )
@@ -38,7 +39,7 @@ ${name_inv} = {
 
 def asLuaTable(robotGeometryModel):
     posesModel      = robotGeometryModel.posesModel
-    transformsmodel = ct.frommotions.motionsToCoordinateTransforms(posesModel, ct.models.TransformPolarity.movedFrameOnTheRight )
+    transformsmodel = mot2ct.motionsToCoordinateTransforms(posesModel)
 
     templateText = '''
 return {
