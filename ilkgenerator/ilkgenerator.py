@@ -27,11 +27,27 @@ def main():
     argparser.add_argument('-o', '--output-dir', metavar='ODIR', dest='odir',
             default = default_outdir,
             help='the directory where to put the generated files (defaults to ' + default_outdir + ')')
+    argparser.add_argument('-e', '--experimental', dest='exp', action='store_true',
+            help='?!?')
 
     args = argparser.parse_args()
 
     connectivity, tree, robotframes, geometrymodel, inertia, params = rmtool.getmodels(args.robot)
     robotmodel = tree # this is the model composed of connectivity plus numbering scheme
+
+    if args.exp :
+        from ilkgenerator.imp.robot import RobotModel
+        from ilkgenerator.imp import luabridge
+        rmodel = RobotModel(geometrymodel)
+        luamodel = luabridge.lua_friendly_robot(rmodel)
+        gen = luabridge.load_module('generator.lua')
+        engine = luabridge.load_module('id.lua')
+        tape = engine(luamodel)
+        text = gen(luamodel, tape)
+        ostream = open(args.odir + "/" + "try" + ".ilk", mode='w')
+        ostream.write(text)
+        ostream.close()
+        return
 
     if args.query :
         istream = open(args.query)
