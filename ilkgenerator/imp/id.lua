@@ -44,12 +44,12 @@ local tape = {
     ops = {}
 }
 
-robot.bodies.outward = function() return ipairs(robot.bodies) end
-
-local function parent(link)   return robot.parent[link] end
-local function supportJ(link) return robot.sjoint[link] end
-local function predecessor(joint) return robot.predecessor[joint] end
-local function successor(joint)   return robot.successor[joint] end
+--robot.bodies.outward = function() return ipairs(robot.bodies) end
+--
+--local function parent(link)   return robot.parent[link] end
+--local function supportJ(link) return robot.sjoint[link] end
+--local function predecessor(joint) return robot.predecessor[joint] end
+--local function successor(joint)   return robot.successor[joint] end
 
 local function vJoint(joint)
     table.insert( tape.joint_vel_twists, { joint=joint, polarity=1 } ) --TODO polarity
@@ -65,7 +65,10 @@ local function a_bias(joint)
     return { val = "v_i x " .. vJoint(joint).val }
 end
 
+local function output(...)
+    local args = {...}
 
+end
 
 
 
@@ -91,8 +94,8 @@ local mt = {
     __newindex = function(t, key, val)
         setmetatable( val, mt_add )
         --print("assigning key ", key, "in table", t)
-        if key ~= val.tgt then
-            logger.warning("Assigning velocity of '" .. val.tgt .. "' to '" .. key .. "'")
+        if key ~= val.tgt.name then
+            logger.warning("Assigning velocity of '" .. val.tgt.name .. "' to '" .. key .. "'")
         end
         rawset(t, key, val)
     end
@@ -101,7 +104,7 @@ setmetatable(v, mt)
 
 
 local function v_zero(link)
-    v[link] =  { tgt=link, ref=link }
+    v[link.name] =  { tgt=link, ref=link }
 end
 
 local locals = {
@@ -109,29 +112,30 @@ local locals = {
 
     v_zero = v_zero
 }
-local _ENV = locals
+--local _ENV = locals
 
 --print(_G)
 --print(_ENV)
 
 function a_solver(robot, q, qd, qdd)
 
-    v_zero('base')
+    v_zero(robot.base)
 
     for i, link in robot.bodies.outward() do
 
-        joint = supportJ(link)
+        joint = robot.supportJ(link)
 
         v_J = vJoint( joint )
-        dad = parent(link)
-        v[link] = v[dad] + v_J
+        dad = robot.parent(link)
+        print(link, dad, v[dad.name], v_J)
+        v[link.name] = v[dad.name] + v_J
 
         --a_J = aJoint( joint )
         --a[link] = a[parent(link)] + a_J + a_bias( joint )
         --f[link] = inertia(link) * a[link] + f_bias(link)
     end
 
-
+    output(v['l3'])
 end
 
 --for link in robot.bodies.inward() do
@@ -142,12 +146,11 @@ end
 --    end
 --end
 
-a_solver(robot)
+--a_solver(robot)
+--ct.annotate_with_ctransforms(tape, 'body-coordinates')
 
-ct.annotate_with_ctransforms(tape, 'body-coordinates')
 
-
-_ENV = _G -- restore standard
+--_ENV = _G -- restore standard
 
 --print("")
 --for k,v in pairs(locals) do
@@ -184,3 +187,13 @@ print( dump(tape.ct))
 --for k,v in pairs(registry) do
 --    print(k, dump(v, '\t'))
 --end
+
+return function(robot)
+    robot.bodies = {}
+    robot.bodies.outward = function() return ipairs(robot.links) end
+    predecessor = robot.predecessor
+    successor = robot.successor
+    a_solver(robot)
+    ct.annotate_with_ctransforms(tape, 'body-coordinates')
+    return tape
+end
