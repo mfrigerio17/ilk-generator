@@ -3,6 +3,9 @@ local logger = require('log').new(
   require('log.writer.console.color').new()
 )
 
+local opcodes = require('opcodes')
+local ct = require('ct')
+
 --print(_G)
 --print(_ENV)
 
@@ -72,11 +75,11 @@ local mt_add = {
 }
 
 local function velocity_add(lhs, rhs)
-    table.insert( tape.ops, { op='vel-compose', arg1=lhs, arg2=rhs} )
-    table.insert( tape.ct, {type='twist', left_frame=rhs.tgt, right_frame=lhs.ref} )
     -- TODO target/reference of the composition should be figured out by
     -- looking at the addends
     local ret = { tgt=rhs.tgt,  ref=lhs.ref }
+    table.insert( tape.ops, { op=opcodes.vel_compose, arg1=lhs, arg2=rhs, res=ret} )
+
     setmetatable(ret, mt_add)
     return ret
 end
@@ -88,6 +91,9 @@ local mt = {
     __newindex = function(t, key, val)
         setmetatable( val, mt_add )
         --print("assigning key ", key, "in table", t)
+        if key ~= val.tgt then
+            logger.warning("Assigning velocity of '" .. val.tgt .. "' to '" .. key .. "'")
+        end
         rawset(t, key, val)
     end
 }
@@ -99,8 +105,8 @@ local function v_zero(link)
 end
 
 local locals = {
-    _G = _G,  -- don't forget ;) - to be able to re-get _G as a global
-    
+    _G = _G,  -- don't forget ;) - to be able to re-get _G as a global, later
+
     v_zero = v_zero
 }
 local _ENV = locals
@@ -115,7 +121,7 @@ function a_solver(robot, q, qd, qdd)
     for i, link in robot.bodies.outward() do
 
         joint = supportJ(link)
-    
+
         v_J = vJoint( joint )
         dad = parent(link)
         v[link] = v[dad] + v_J
@@ -124,6 +130,8 @@ function a_solver(robot, q, qd, qdd)
         --a[link] = a[parent(link)] + a_J + a_bias( joint )
         --f[link] = inertia(link) * a[link] + f_bias(link)
     end
+
+
 end
 
 --for link in robot.bodies.inward() do
@@ -136,6 +144,8 @@ end
 
 a_solver(robot)
 
+ct.annotate_with_ctransforms(tape, 'body-coordinates')
+
 
 _ENV = _G -- restore standard
 
@@ -145,10 +155,11 @@ _ENV = _G -- restore standard
 --end
 
 
+
 print("")
 
 local function dump(entry, indent)
-    indent = indent or '\t'
+    indent = indent or ""
     local text = ""
     for k,v in pairs(entry) do
         if type(v)=='table' then
@@ -163,10 +174,13 @@ end
 print("Recorded tape dump:")
 print("")
 print("Joint velocities:")
-print( dump( tape.joint_vel_twists, '\t' ) )
+print( dump( tape.joint_vel_twists ) )
 print("")
 print("Operations:")
-print( dump(tape.ops, '\t' ))
+print( dump(tape.ops ))
+print("")
+print("Coordinate transforms:")
+print( dump(tape.ct))
 --for k,v in pairs(registry) do
 --    print(k, dump(v, '\t'))
 --end
