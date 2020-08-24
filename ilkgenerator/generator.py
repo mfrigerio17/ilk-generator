@@ -24,7 +24,8 @@ def gJacobianIdentifier(gjac):
 
 
 def jointTypeStr(joint) :
-    return joint.kind # by chance, the same string we use in the ILK
+    return joint.kind.name
+    # the name of the enum items is the same as the string we use in the ILK
 
 def directionTag(jointPose) :
     targetKind = jointPose.target.attrs['role']
