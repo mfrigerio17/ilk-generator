@@ -53,6 +53,12 @@ return {
         },
     },
 
+    joint_vel_twists = {
+@for name, args in pairs(tape.joint_vel_twists) do
+        «name» = { joint='«args.joint.name»', polarity=«args.polarity» },
+@end
+    },
+
     ops = {
 @for i, op in ipairs(tape.ops) do
         «dumpOp(op)»,
@@ -70,7 +76,7 @@ local function op_specs_to_text(op)
     local text = "{ op='" .. op.op .."', "
     for k,v in pairs(op) do
         if k ~= 'op' then
-            text = text .. k .. "=" .. tostring(v) .. ", "
+            text = text .. k .. "='" .. tostring(v) .. "', "
         end
     end
     text = text .. "}"
@@ -79,10 +85,10 @@ end
 
 
 local names = require("names")
-local post_process = require("postp")
+--local post_process = require("postp")
 
-local function generator(robot_model, solver_tape)
-    post_process(solver_tape)
+local function generate(robot_model, solver_tape)
+    --post_process(solver_tape)
     local env = {
         robot = robot_model,
         tape  = solver_tape,
@@ -96,5 +102,7 @@ local function generator(robot_model, solver_tape)
 end
 
 
-return generator
+return {
+    generate = generate
+}
 

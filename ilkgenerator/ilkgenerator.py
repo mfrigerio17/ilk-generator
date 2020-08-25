@@ -29,6 +29,9 @@ def main():
             help='the directory where to put the generated files (defaults to ' + default_outdir + ')')
     argparser.add_argument('-e', '--experimental', dest='exp', action='store_true',
             help='?!?')
+    argparser.add_argument('-d', '--dpc', dest='dpc', metavar='FILE',
+            help='the Dynamics Pseudo Code program')
+
 
     args = argparser.parse_args()
 
@@ -40,10 +43,11 @@ def main():
         from ilkgenerator.imp import luabridge
         rmodel = RobotModel(geometrymodel)
         luamodel = luabridge.lua_friendly_robot(rmodel)
-        gen = luabridge.load_module('generator.lua')
-        engine = luabridge.load_module('id.lua')
-        tape = engine(luamodel)
-        text = gen(luamodel, tape)
+        gen = luabridge.load_module('main.lua')
+        dpcfile = open(args.dpc)
+        dpc = dpcfile.read()
+        dpcfile.close()
+        text = gen.main(luamodel, dpc)
         ostream = open(args.odir + "/" + "try" + ".ilk", mode='w')
         ostream.write(text)
         ostream.close()

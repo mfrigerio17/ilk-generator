@@ -1,0 +1,26 @@
+function solver()
+
+    zeroV(robot.base)
+
+    --for k,v in pairs(v) do print(k,v) end
+    --print(v['base'])
+
+    for i, link in robot.bodies_outward_sweep() do
+
+        joint = supportJ(link)
+
+        v_J = vJoint( joint )
+        dad = parent(link)
+        --print(link, dad, v_J, v[dad], type(dad))
+        v[link] = v[dad] + v_J
+
+    end
+
+    --output(v['l3'])
+end
+
+
+
+        --a_J = aJoint( joint )
+        --a[link] = a[parent(link)] + a_J + a_bias( joint )
+        --f[link] = inertia(link) * a[link] + f_bias(link)
