@@ -111,7 +111,6 @@ class SweepingSolverGenerator():
 
             context = {'velid' : velocityIdentifier(jvel.vel),
                        'joint' : jvel.joint,
-                       'jnum'  : self.solverModel.robot.jointNum(jvel.joint),
                        'pose'  : poseid }
             return Template(tpl).render(**context)
 
@@ -131,7 +130,7 @@ class SweepingSolverGenerator():
                 lineTemplate = '''{ op='GJac-col', joint='${J.joints[j].name}', jac='${gjac_id}', col=${jnum(J.joints[j])}, joint_pose='${poseID(J.jointPoses[j])}', polarity=${J.polarities[j]} }''',
                 singleItemName = "j",
                 context = { "gjac_id" : Jid,
-                            "jnum"    : self.solverModel.rmodels['robot'].jointNum,
+                            "jnum"    : self.jointNum,
                             "poseID"  : poseIdentifier,
                             "J"       : J
                         }
