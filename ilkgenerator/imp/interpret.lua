@@ -1,3 +1,5 @@
+function dbg(tab) for k,v in pairs(tab) do print(k,v) end end
+
 local logger = require('log').new(
   "debug",
   require('log.writer.console.color').new()
@@ -132,7 +134,7 @@ local function interpret(solver_code, env)
     pcall(f)
     --for k,v in pairs(env) do print(k,v) end
     env.solver()
-    return true
+    return true, {msg="success"}
 end
 
 

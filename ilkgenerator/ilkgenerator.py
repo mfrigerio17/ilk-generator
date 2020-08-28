@@ -6,6 +6,7 @@ import rmt.rmt as rmtool
 from kgprim import motions
 
 from ilkgenerator import query, solvermodel, generator, robotconstants
+import ilkgenerator.imp.main as dpc_engine
 
 log = logging.getLogger(__name__)
 
@@ -42,12 +43,10 @@ def main():
         from ilkgenerator.imp.robot import RobotModel
         from ilkgenerator.imp import luabridge
         rmodel = RobotModel(geometrymodel)
-        luamodel = luabridge.lua_friendly_robot(rmodel)
-        gen = luabridge.load_module('main.lua')
         dpcfile = open(args.dpc)
         dpc = dpcfile.read()
         dpcfile.close()
-        text = gen.main(luamodel, dpc)
+        text = dpc_engine.main(rmodel, dpc)
         ostream = open(args.odir + "/" + "try" + ".ilk", mode='w')
         ostream.write(text)
         ostream.close()
