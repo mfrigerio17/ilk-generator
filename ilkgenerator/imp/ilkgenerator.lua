@@ -35,7 +35,7 @@ return {
 
     joints = {
 @for i, joint in ipairs(robot.joints) do
-        «joint.name» = { kind='«jTypeStr(joint)»', coordinate=«i» },
+        «joint.name» = { kind='«jTypeStr(joint)»', coordinate=«i-1» },
 @end
     },
 
@@ -60,6 +60,9 @@ return {
     },
 
     ops = {
+@for i, op in ipairs(tape.pose_compose_ops) do
+        «dumpOp(op)»,
+@end
 @for i, op in ipairs(tape.ops) do
         «dumpOp(op)»,
 @end
