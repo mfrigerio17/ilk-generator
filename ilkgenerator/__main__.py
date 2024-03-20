@@ -1,3 +1,3 @@
-from ilkgenerator import ilkgenerator
+import ilkgenerator.main
 
-ilkgenerator.main()
+ilkgenerator.main.main()

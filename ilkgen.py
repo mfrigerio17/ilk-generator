@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from ilkgenerator import ilkgenerator
+import ilkgenerator.main
 
 if __name__ == '__main__':
-    ilkgenerator.main()
+    ilkgenerator.main.main()
