@@ -18,13 +18,13 @@ def main():
     log.setLevel(logging.WARN)
     log.addHandler(handler)
 
-    argparser = argparse.ArgumentParser(description='Generate ILK solver models')
+    argparser = argparse.ArgumentParser(prog="ilkgen", description='Generate ILK solver models')
 
     rmtool.setRobotArgs(argparser)
 
     argparser.add_argument('-q', '--query', metavar='QUERY', dest='query',
             help='the YAML file containing a query (defaults to a random FK solver)')
-    argparser.add_argument('-odir', '--output-dir', metavar='ODIR', dest='odir',
+    argparser.add_argument('-o', '--output-dir', metavar='ODIR', dest='odir',
             default = default_outdir,
             help='the directory where to put the generated files (defaults to ' + default_outdir + ')')
 
