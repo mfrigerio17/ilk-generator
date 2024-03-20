@@ -10,7 +10,7 @@ from collections import namedtuple
 from ilkgenerator import query
 from ilkgenerator import codegenutils
 
-from gr import core as gr
+from kgprim import core as gr
 from robmodel import frames
 
 def poseIdentifier(pose):
@@ -24,7 +24,8 @@ def gJacobianIdentifier(gjac):
 
 
 def jointTypeStr(joint) :
-    return joint.kind # by chance, the same string we use in the ILK
+    return joint.kind.name
+    # the name of the enum items is the same as the string we use in the ILK
 
 def directionTag(jointPose) :
     targetKind = jointPose.target.attrs['role']

@@ -12,7 +12,7 @@ from ilkgenerator import query
 from ilkgenerator import jacobians
 
 
-from gr import core as gr
+from kgprim import core as gr
 from robmodel.frames import FrameRelationKind
 
 

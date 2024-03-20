@@ -1,17 +1,9 @@
 import logging, os, argparse, yaml
 
-import robmodel.convert.importers.urdf   as urdfImporter
-
-kindslSupport = True
-try:
-    import robmodel.convert.importers.kindsl as kindslImporter
-except ImportError as e:
-    kindslImportErrorMsg = e.msg
-    kindslSupport = False
-
 import robmodel
+import rmt.rmt as rmtool
 
-from gr import motions
+from kgprim import motions
 
 from ilkgenerator import query, solvermodel, generator, robotconstants
 
@@ -28,11 +20,7 @@ def main():
 
     argparser = argparse.ArgumentParser(description='Generate ILK solver models')
 
-    opts_outer_group = argparser.add_mutually_exclusive_group(required=True)
-
-    opts_outer_group.add_argument('-y', '--yaml',   dest='yaml', action='store_true', help='Use a model split in several YAML files (dev option)')
-    opts_outer_group.add_argument('-u', '--urdf',   metavar='PATH', dest='urdf',   help='Use a URDF robot model')
-    opts_outer_group.add_argument('-k', '--kindsl', metavar='PATH', dest='kindsl', help='Use a KinDSL robot model')
+    rmtool.setRobotArgs(argparser)
 
     argparser.add_argument('-q', '--query', metavar='QUERY', dest='query',
             help='the YAML file containing a query (defaults to a random FK solver)')
@@ -40,47 +28,10 @@ def main():
             default = default_outdir,
             help='the directory where to put the generated files (defaults to ' + default_outdir + ')')
 
-    argparser_yaml = argparse.ArgumentParser(prog='<program> --yaml')
-    argparser_yaml.add_argument('robot', metavar='robot-model',
-             help='path of the robot model input file')
-    argparser_yaml.add_argument('numbering', metavar='num-scheme',
-             help='path of the numbering scheme input file')
-    argparser_yaml.add_argument('geometry', metavar='geometry',
-             help='path of the geometric numerical data input file')
+    args = argparser.parse_args()
 
-    (args, extra) = argparser.parse_known_args()
-    if args.yaml :
-        yaml_args = argparser_yaml.parse_args(extra)
-
-        istream = open(yaml_args.robot)
-        connectivity = robmodel.robot.fromYAML( istream )
-        istream.close()
-
-        istream = open(yaml_args.numbering)
-        numscheme = robmodel.ordering.fromYAML( istream )
-        istream.close()
-
-        robotmodel  = robmodel.ordering.Robot( connectivity, numscheme )
-        robotframes = robmodel.frames.RobotDefaultFrames(robotmodel, [])
-
-        istream = open(yaml_args.geometry)
-        data    = yaml.load(istream)
-        istream.close()
-        posesSpec = motions.PosesSpec.fromDict(data)
-        geometrymodel = robmodel.geometry.Geometry(robotmodel, robotframes, posesSpec)
-
-    elif args.urdf :
-        urdffile = open( args.urdf )
-        urdf = urdfImporter.URDFWrapper(urdffile)
-        connectivity, ordering, robotframes, geometrymodel = urdfImporter.convert(urdf)
-        robotmodel = ordering # this is the model composed of connectivity plus numbering scheme
-
-    elif args.kindsl :
-        if not kindslSupport :
-            raise RuntimeError("KinDSL support not available!, are you perhaps missing textX in your Python environment?"+
-                               " The import error was: " + kindslImportErrorMsg)
-        connectivity, ordering, robotframes, geometrymodel = kindslImporter.convert(args.kindsl)
-        robotmodel = ordering # this is the model composed of connectivity plus numbering scheme
+    connectivity, tree, robotframes, geometrymodel, inertia, params = rmtool.getmodels(args.robot)
+    robotmodel = tree # this is the model composed of connectivity plus numbering scheme
 
     if args.query :
         istream = open(args.query)
