@@ -138,14 +138,15 @@ class SweepingSolverGenerator():
             )
 
             templateText = '''
-    { op='geom-jacobian', name='${gjac_id}', pose='${ee_pose}' },
+    { op='geom-jacobian', name='${gjac_id}', pose='${ee_pose}', columns=${columns} },
 % for col_op in columnOps :
     ${col_op}
 % endfor'''
             context = {
                 "gjac_id"   : Jid,
                 "ee_pose"   : poseIdentifier(J.targetPose),
-                "columnOps" : self.commaSepLines(range(0,len(J.joints)), column_op )
+                "columnOps" : self.commaSepLines(range(0,len(J.joints)), column_op ),
+                "columns"   : len(J.joints)
             }
             return Template(templateText).render(**context)
 
