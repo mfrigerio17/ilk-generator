@@ -1,0 +1,25 @@
+[project]
+
+name        = "ilk-generator"
+version     = "0.1.0"
+description = "Generator of language-independent imperative models of kinematics solvers"
+authors     = [
+    { name = "Marco Frigerio", email = "marco.frigerio17@pm.me" }
+]
+
+license = { file = "LICENSE" }
+readme = "readme.md"
+
+requires-python = ">=3.4"
+
+dependencies = [
+    'kgprim',
+    'robot-model-tools'
+]
+
+[project.scripts]
+ilkgen = "ilkgenerator.main:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
