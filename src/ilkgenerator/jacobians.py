@@ -28,10 +28,16 @@ class GeometricJacobian():
             if joint != None :
                 self.joints.append( joint )
                 self.jointPoses.append( Pose(target=fr, reference=ref))
-                if previousFrame == robotFrames.framesByName[ self.robot.predecessor(joint).name ] :
-                    self.polarities.append( 1 )
-                else :
+                if previousFrame == robotFrames.framesByName[ self.robot.successor(joint).name ] :
                     self.polarities.append( -1 )
+                else :
+                    # This includes the "normal" case where the previous frame
+                    #  is the one of the predecessor.
+                    # But also the special case when 'previousFrame' is None,
+                    #  which means the current joint-frame is really the first
+                    #  in the path, which in turn means that this Jacobian's
+                    #  reference is the joint-frame itself
+                    self.polarities.append( 1 )
             previousFrame = fr
         self.targetPose = Pose(target=tgt, reference=ref)
 
