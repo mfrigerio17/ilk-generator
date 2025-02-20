@@ -160,6 +160,7 @@ def checkVelocitySpecs(robotFrames, robotPoints, v):
     '''
 
     robot = robotFrames.robot
+    cframe = robotFrames.framesByName.get(v.cframe, None)
     if v.kind == 'linear' :
         if v.target not in robotPoints:
             raise ValueError("The target of a linear velocity must be a point attached to the robot")
@@ -172,15 +173,44 @@ def checkVelocitySpecs(robotFrames, robotPoints, v):
             ref = robot.links[v.reference]
 
     elif v.kind == "6D" :
-        if v.target not in robot.links :
-            raise ValueError("The target for a 6D velocity must be a link of the robot (offending key: '{0}')".format(v.target))
-        if v.reference not in robot.links :
-            raise ValueError("The reference for a 6D relative velocity must be a link of the robot (offending key: '{0}')".format(v.reference))
-        tgt = robot.links[v.target]
-        ref = robot.links[v.reference]
+        if v.target in robot.links :
+            tgt = robotFrames.linkFrames[ robot.links[v.target] ]
+        elif v.target in robot.joints :
+            tgt = robotFrames.jointFrames[ robot.joints[v.target] ]
+        elif v.target in robotFrames.framesByName :
+            tgt = robotFrames.framesByName[v.target]
+        else:
+            raise ValueError("The target for a linear+angular velocity must be a frame of the robot (offending key: '{0}')".format(v.target))
+
+        if v.reference in robot.links :
+            ref = robotFrames.linkFrames[ robot.links[v.reference] ]
+        elif v.reference in robot.joints :
+            ref = robotFrames.jointFrames[ robot.joints[v.reference] ]
+        elif v.reference in robotFrames.framesByName :
+            ref = robotFrames.framesByName[v.reference]
+        else:
+            raise ValueError("The reference for a linear+angular velocity must be a frame of the robot (offending key: '{0}')".format(v.reference))
+
+        #TODO deal with the cases of the user specifying explicitly a coordinate frame
+        if cframe == None:
+            cframe = ref
+            # this is the default for Euclidean velocities: the coordinates are
+            # in the same frame as the reference of the velocity
+
+
+    #elif v.kind == "spatial":
+        # TODO
+        # the target must be a link
+        # if the reference is another frame on a link, the target is such a link,
+        # and automatically the coordinate-frame is the reference as indicated by the user
+        # If the user _also_ indicated a coordinate-frame, that is a mistake
+    else:
+        raise RuntimeError("Unknown velocity kind '{}'".format(v.kind))
+
 
     vel = gr.Velocity(tgt, ref)
     vel.kind = v.kind
+    vel.cframe = cframe
 
     return vel
 
