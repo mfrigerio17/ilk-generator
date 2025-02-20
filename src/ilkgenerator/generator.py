@@ -14,6 +14,8 @@ from kgprim import core as gr
 from robmodel import frames
 
 def poseIdentifier(pose):
+    if pose.target == pose.reference :
+        return "_identity_"
     return pose.target.name + "__" + pose.reference.name
 
 def velocityIdentifier(velocity):
