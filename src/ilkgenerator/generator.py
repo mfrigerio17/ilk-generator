@@ -128,12 +128,13 @@ class SweepingSolverGenerator():
     def block_jacobians(self):
         def oneJac(J):
             Jid = gJacobianIdentifier(J)
+            firstJointNum = self.jointNum(J.joints[0])
 
             column_op = BlockSpec(
                 lineTemplate = '''{ op='GJac-col', joint='${J.joints[j].name}', jac='${gjac_id}', col=${jnum(J.joints[j])}, joint_pose='${poseID(J.jointPoses[j])}', polarity=${J.polarities[j]} }''',
                 singleItemName = "j",
                 context = { "gjac_id" : Jid,
-                            "jnum"    : self.jointNum,
+                            "jnum"    : lambda j: self.jointNum(j)-firstJointNum,
                             "poseID"  : poseIdentifier,
                             "J"       : J
                         }
