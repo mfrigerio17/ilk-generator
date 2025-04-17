@@ -8,10 +8,13 @@ from mako.template import Template
 from collections import namedtuple
 
 from ilkgenerator import query
+from ilkgenerator import utils
 from ilkgenerator import codegenutils
 
 from kgprim import core as gr
 from robmodel import frames
+import robmodel.connectivity
+
 
 def poseIdentifier(pose):
     if pose.target == pose.reference :
@@ -28,6 +31,9 @@ def gJacobianIdentifier(gjac):
 def jointTypeStr(joint) :
     return joint.kind.name
     # the name of the enum items is the same as the string we use in the ILK
+
+def jointIsValid(joint):
+    return utils.isSupportedTypeAndNonFixed(joint)
 
 def directionTag(jointPose) :
     targetKind = jointPose.target.attrs['role']
@@ -52,6 +58,7 @@ class SweepingSolverGenerator():
         self.velComposes  = solvermodel.velBinaryComposes
         self.poseComposes = poseComposes
         self.solverModel  = solvermodel
+        self.usableJoints = [j for j in solvermodel.robot.joints.values() if jointIsValid(j)]
 
         def outputIndex(self):
             total = sum( [len(block) for block in self.solverModel.output.values() ] )
@@ -78,7 +85,7 @@ class SweepingSolverGenerator():
             singleItemName = 'joint',
             context = {'typeStr': jointTypeStr, 'jnum': self.jointNum}
         )
-        return self.commaSepLines(self.solverModel.robot.joints.values(), bspec)
+        return self.commaSepLines(self.usableJoints, bspec)
 
 
     def block_constantPoses(self):
@@ -234,10 +241,7 @@ class SweepingSolverGenerator():
                     somethingBefore = currentNonEmpty
                 yield sep
 
-        realJointsCount = len(self.solverModel.robot.joints)
-        for j in self.solverModel.robot.joints.values() :
-            if j.kind == "fixed" :
-                realJointsCount -= 1
+        realJointsCount = len(self.usableJoints)
         template = '''
 return {
     solverid = '${solver.name}',

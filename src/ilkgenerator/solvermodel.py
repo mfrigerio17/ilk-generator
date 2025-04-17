@@ -10,10 +10,11 @@ from ilkgenerator import optcompose
 from ilkgenerator.optcompose import HomogenoeusComposable
 from ilkgenerator import query
 from ilkgenerator import jacobians
-
+from ilkgenerator import utils
 
 from kgprim import core as gr
 from robmodel.frames import FrameRelationKind
+from robmodel.connectivity import JointKind
 
 
 #TODO treat poses and velocities consistently: separate the semantic primitives
@@ -46,7 +47,7 @@ class FKSolverSpecs:
     '''Data required to specify a declarative model of a FK solver.
 
     The identifying attributes include a name, the robot model(s) the solver
-    refers to, and the quantities to be computes. These include relative poses,
+    refers to, and the quantities to be computed. These include relative poses,
     relative velocities, geometric Jacobians.
     '''
 
@@ -122,7 +123,6 @@ class _ComposableVelocity(HomogenoeusComposable):
         for ot in others :
             current = gr.velCompose(current, ot.v)
         return _ComposableVelocity(current)
-
 
 
 class FKSolverModel:
@@ -206,7 +206,7 @@ class FKSolverModel:
                 pose = gr.Pose(target=tgtF, reference=refF)
                 allPoses.add( pose )
 
-        poseComposePaths = [self.posePath(pose) for pose in allPoses ]
+        poseComposePaths = [self._posePath(pose) for pose in allPoses ]
         self.poseComposes = optcompose.allComposes( poseComposePaths )
 
     @property
@@ -216,7 +216,9 @@ class FKSolverModel:
     def robotFrames(self):
         return self.rmodels['frames']
 
-    def posePath(self, givenpose):
+
+
+    def _posePath(self, givenpose):
         '''
         The sequence of distance-1 poses equivalent to the given pose.
 
@@ -228,7 +230,7 @@ class FKSolverModel:
         The returned sequence is in fact an optcompose.Path object.
 
         While building the sequence, this method also populates the sets of
-        constant-poses and joint-poses of the robot model.
+        constant-poses and joint-poses of this instance.
         '''
         composablesList = []
         framesGraph = self.rmodels['frames']
@@ -237,8 +239,15 @@ class FKSolverModel:
         for ref in graphPath[1:] :
             pose = _ComposablePose( gr.Pose(tgt, ref) )
             if framesGraph.kind(tgt, ref) is FrameRelationKind.acrossJoint :
-                pose.joint = framesGraph.joint(tgt, ref)
-                self.jointPoses.add( pose )
+                joint = framesGraph.joint(tgt, ref)
+                if joint.kind == JointKind.fixed:
+                    self.constPoses.add( pose )
+                elif utils.isSupportedTypeAndNonFixed(joint):
+                    pose.joint = joint
+                    self.jointPoses.add( pose )
+                else:
+                    raise RuntimeError("Unsupported joint kind '{}', for joint '{}'"
+                        .format(joint.kind, joint.name))
             else :
                 self.constPoses.add( pose )
             #if not framesGraph.relativePoseIsIdentity(tgt, ref) :
