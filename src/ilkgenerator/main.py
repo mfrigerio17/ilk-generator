@@ -30,7 +30,7 @@ def main():
 
     args = argparser.parse_args()
 
-    connectivity, tree, robotframes, geometrymodel, inertia, params = rmtool.getmodels(args.robot, args.params)
+    connectivity, tree, robotframes, geometrymodel, inertia, params = rmtool.getmodels(args.robot, args.params)[0:6]
     robotmodel = tree # this is the model composed of connectivity plus numbering scheme
     rmtool._resolve_parameters(geometrymodel.posesModel.poses, params)
 
