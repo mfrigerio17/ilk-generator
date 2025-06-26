@@ -41,8 +41,12 @@ def main():
     else :
         userq = query.defaultQuery(robotmodel)
 
-    qparser = query.QueryParser(robotmodel, robotframes, None)
-    sweepingsolvers, iksolvers = qparser.validate(userq)
+    try:
+        qparser = query.QueryParser(robotmodel, robotframes, None)
+        sweepingsolvers, iksolvers = qparser.validate(userq)
+    except Exception as e:
+        log.error("Parsing exception: %s", e)
+        return -1
 
     if not os.path.exists(args.odir) :
         os.makedirs(args.odir)
