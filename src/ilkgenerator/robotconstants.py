@@ -15,16 +15,19 @@ formatter = tplutils.FloatsFormatter(round_digits=6)
 def _tformIdentifier(targetFrame, relativeToFrame):
     return targetFrame.name + "__" + relativeToFrame.name
 
-def oneTransformTable(ctransform):
-    hm = mxrepr.hCoordinatesNumeric(ctransform)
+def oneTransformTable(poseSpec):
+    ct1 = mot2ct.toCoordinateTransform(poseSpec, polarity=TransformPolarity.movedFrameOnTheRight)
+    ct2 = mot2ct.toCoordinateTransform(poseSpec, polarity=TransformPolarity.movedFrameOnTheLeft)
 
-    name = _tformIdentifier(targetFrame=ctransform.rightFrame, relativeToFrame=ctransform.leftFrame)
+    hm = mxrepr.hCoordinatesNumeric(ct1)
+    name = _tformIdentifier(targetFrame=ct1.rightFrame, relativeToFrame=ct1.leftFrame)
     p = tplutils.numericArrayToText( hm[0:3,3], formatter )
     R = tplutils.numericArrayToText( hm[0:3,0:3], formatter )
 
-    name_inv = _tformIdentifier(targetFrame=ctransform.leftFrame, relativeToFrame=ctransform.rightFrame)
-    p_inv    = tplutils.numericArrayToText( -hm[0:3,3], formatter )
-    R_inv    = tplutils.numericArrayToText( np.transpose(hm[0:3,0:3]), formatter )
+    hm_inv = mxrepr.hCoordinatesNumeric(ct2)
+    name_inv = _tformIdentifier(targetFrame=ct2.rightFrame, relativeToFrame=ct2.leftFrame)
+    p_inv    = tplutils.numericArrayToText( hm_inv[0:3,3], formatter )
+    R_inv    = tplutils.numericArrayToText( hm_inv[0:3,0:3], formatter )
     templateText ='''
 ${name} = {
     p = {${p[0]}, ${p[1]}, ${p[2]}},
@@ -43,7 +46,6 @@ ${name_inv} = {
 
 def asLuaTable(robotGeometryModel):
     posesModel      = robotGeometryModel.posesModel
-    transformsmodel = mot2ct.motionsToCoordinateTransforms(posesModel)
 
     fixed_joints = []
     connectModel = robotGeometryModel.connectivityModel
@@ -71,5 +73,5 @@ ${j} = '_identity_',
 }
 '''
     template = Template(templateText)
-    mxs = tplutils.commaSeparated(transformsmodel.transforms, oneTransformTable)
+    mxs = tplutils.commaSeparated(posesModel.poses, oneTransformTable)
     return template.render( matrices=mxs, fixed_joints=fixed_joints )
