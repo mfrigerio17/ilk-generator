@@ -58,6 +58,10 @@ class SweepingSolverGenerator():
         self.velComposes  = solvermodel.velBinaryComposes
         self.poseComposes = poseComposes
         self.solverModel  = solvermodel
+        # Sort the solver model data with a fixed criteria, to make
+        #  the generation of ILK text repeatable.
+        self.constantPoses = sorted(solvermodel.constPoses, key=lambda pose: pose.target.name)
+        self.jointPoses    = sorted(solvermodel.jointPoses, key=lambda pose: self.solverModel.robot.jointNum(pose.joint))
         self.usableJoints = [j for j in solvermodel.robot.joints.values() if jointIsValid(j)]
 
         def outputIndex(self):
@@ -94,7 +98,7 @@ class SweepingSolverGenerator():
             singleItemName = 'pose',
             context = {'toID' : poseIdentifier}
         )
-        return self.commaSepLines(self.solverModel.constPoses, bspec)
+        return self.commaSepLines(self.constantPoses, bspec)
 
 
     def block_jointPoses(self):
@@ -103,7 +107,7 @@ class SweepingSolverGenerator():
             singleItemName = 'pose',
             context = {'toID': poseIdentifier, 'dirTag': directionTag}
         )
-        return self.commaSepLines(self.solverModel.jointPoses, bspec)
+        return self.commaSepLines(self.jointPoses, bspec)
 
 
     def block_jointVelocityTwists(self):
