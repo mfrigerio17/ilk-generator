@@ -1,0 +1,13 @@
+robot: ur5
+
+solvers:
+
+- name: fk1
+  kind: sweeping
+  outputs:
+    poses:
+      - target: wrist_3
+        reference: base
+
+
+
