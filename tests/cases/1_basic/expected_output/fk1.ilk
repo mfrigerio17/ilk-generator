@@ -1,0 +1,62 @@
+
+return {
+    solverid = 'fk1',
+    solver_type = 'forward',
+    robot_name = 'ur5',
+    joint_space_size = 6,
+    joints = {
+        shoulder_pan = { kind='revolute', coordinate=0 },
+        shoulder_lift = { kind='revolute', coordinate=1 },
+        elbow = { kind='revolute', coordinate=2 },
+        wr1 = { kind='revolute', coordinate=3 },
+        wr2 = { kind='revolute', coordinate=4 },
+        wr3 = { kind='revolute', coordinate=5 }
+    },
+    poses = {
+        constant = {
+            elbow__upper_arm={},
+            shoulder_lift__shoulder={},
+            shoulder_pan__base={},
+            wr1__forearm={},
+            wr2__wrist_1={},
+            wr3__wrist_2={}
+        },
+        joint = {
+            shoulder__shoulder_pan = { joint='shoulder_pan', dir='a_x_b' },
+            upper_arm__shoulder_lift = { joint='shoulder_lift', dir='a_x_b' },
+            forearm__elbow = { joint='elbow', dir='a_x_b' },
+            wrist_1__wr1 = { joint='wr1', dir='a_x_b' },
+            wrist_2__wr2 = { joint='wr2', dir='a_x_b' },
+            wrist_3__wr3 = { joint='wr3', dir='a_x_b' }
+        }
+    },
+    joint_vel_twists = {
+    },
+    ops = {
+        { op='pose-compose', arg1='wrist_3__wr3', arg2='wr3__wrist_2', res='wrist_3__wrist_2' },
+        { op='pose-compose', arg1='wrist_3__wrist_2', arg2='wrist_2__wr2', res='wrist_3__wr2' },
+        { op='pose-compose', arg1='wrist_3__wr2', arg2='wr2__wrist_1', res='wrist_3__wrist_1' },
+        { op='pose-compose', arg1='wrist_3__wrist_1', arg2='wrist_1__wr1', res='wrist_3__wr1' },
+        { op='pose-compose', arg1='wrist_3__wr1', arg2='wr1__forearm', res='wrist_3__forearm' },
+        { op='pose-compose', arg1='wrist_3__forearm', arg2='forearm__elbow', res='wrist_3__elbow' },
+        { op='pose-compose', arg1='wrist_3__elbow', arg2='elbow__upper_arm', res='wrist_3__upper_arm' },
+        { op='pose-compose', arg1='wrist_3__upper_arm', arg2='upper_arm__shoulder_lift', res='wrist_3__shoulder_lift' },
+        { op='pose-compose', arg1='wrist_3__shoulder_lift', arg2='shoulder_lift__shoulder', res='wrist_3__shoulder' },
+        { op='pose-compose', arg1='wrist_3__shoulder', arg2='shoulder__shoulder_pan', res='wrist_3__shoulder_pan' },
+        { op='pose-compose', arg1='wrist_3__shoulder_pan', arg2='shoulder_pan__base', res='wrist_3__base' }
+    
+
+    
+
+    
+
+    },
+
+    outputs = {
+        wrist_3__base = {otype='pose', usersort=1 }
+    
+
+    
+
+    }
+}
