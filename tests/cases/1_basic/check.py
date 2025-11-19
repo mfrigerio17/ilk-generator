@@ -1,9 +1,23 @@
 import filecmp
 import difflib
 import pathlib
+import re
 import logging
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
+def nextLine(istream):
+    n = 1
+    line = istream.readline()
+
+    checkBlank   = re.compile('^ *$')
+    checkComment = re.compile('^ *--')
+    while line != '':
+        if not (checkBlank.match(line) or checkComment.match(line)):
+            yield n,line
+        line = istream.readline()
+        n = n + 1
 
 
 dir_output   = pathlib.Path("output")
@@ -18,14 +32,12 @@ if len(dir_comparator.left_only) > 0 :
     raise RuntimeError("unexpected generated files")
 
 for file in dir_comparator.common_files :
-    same = filecmp.cmp(dir_expected/file, dir_output/file)
-    if not same:
-        logger.error("File mismatch")
-        with open(dir_expected / file) as reference:
-            with open(dir_output / file) as generated:
-                diff = difflib.unified_diff(reference.readlines(), generated.readlines(), "reference", "generated")
-                for mismatch in diff :
-                    print(mismatch)
-                
+    # filecmp.cmp(dir_expected/file, dir_output/file) # cant use it, because it does not have exclusion patterns
+    with open(dir_expected / file) as reference:
+        with open(dir_output / file) as generated:
+            for (rn,rline), (gn, gline) in zip(nextLine(reference), nextLine(generated)):
+                if rline != gline:
+                    logger.error("mismatch for file '%s'", file)
+                    logger.error("  EXPECTED (line %d): %s", rn, rline)
+                    logger.error("  ACTUAL   (line %d): %s", gn, gline)
 
-#dir_comparator.report()
