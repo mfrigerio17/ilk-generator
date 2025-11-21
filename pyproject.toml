@@ -1,20 +1,20 @@
 [project]
 
 name        = "ilk-generator"
-version     = "0.1.0"
+version     = "0.2.0"
 description = "Generator of language-independent imperative models of kinematics solvers"
 authors     = [
-    { name = "Marco Frigerio", email = "marco.frigerio17@pm.me" }
+    { name = "Marco Frigerio", email = "mfgit.6uvfu@passinbox.com" }
 ]
 
-license = { file = "LICENSE" }
+license = "BSD-2-Clause"
 readme = "readme.md"
 
 requires-python = ">=3.4"
 
 dependencies = [
-    'kgprim',
-    'robot-model-tools'
+    "kgprim >= 0.1.1",
+    "robot-model-tools >= 0.2.0"
 ]
 
 [project.scripts]
